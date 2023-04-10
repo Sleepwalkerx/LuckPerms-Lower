@@ -1,0 +1,158 @@
+buildscript {
+    repositories {
+        maven { url = 'https://maven.minecraftforge.net' }
+        mavenCentral()
+        //maven { url "https://plugins.gradle.org/m2/" }
+        jcenter()
+        maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
+    }
+    dependencies {
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.1.+', changing: true
+        classpath group: 'org.spongepowered', name: 'mixingradle', version: '0.7-SNAPSHOT'
+        //classpath "gradle.plugin.com.github.johnrengelman:shadow:7.1.2"
+    }
+}
+
+plugins {
+    id 'com.github.johnrengelman.shadow' version "7.1.2"
+    //id 'com.matthewprenger.cursegradle' version "1.4.0"
+}
+
+apply plugin: 'net.minecraftforge.gradle'
+apply plugin: 'eclipse'
+apply plugin: 'maven-publish'
+
+apply plugin: 'org.spongepowered.mixin'
+
+version = '1.16.5-1.0'
+group = 'me.lucko.luckperms'
+archivesBaseName = 'luckperms'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(8)
+
+println('Java: ' + System.getProperty('java.version') + ' JVM: ' + System.getProperty('java.vm.version') + '(' + System.getProperty('java.vendor') + ') Arch: ' + System.getProperty('os.arch'))
+minecraft {
+
+    mappings channel: 'official', version: '1.16.5'
+
+    runs {
+        client {
+            workingDirectory project.file('run')
+
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+
+            mods {
+                luckperms {
+                    source sourceSets.main
+                }
+            }
+        }
+
+        server {
+            workingDirectory project.file('run')
+
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+
+            mods {
+                luckperms {
+                    source sourceSets.main
+                }
+            }
+        }
+
+        data {
+            workingDirectory project.file('run')
+
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+
+            args '--mod', 'examplemod', '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+
+            mods {
+                luckperms {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+shadowJar {
+    archiveClassifier.set('shadow')
+    configurations = [project.configurations.shadow]
+    from zipTree(jar.archivePath)
+}
+
+repositories {
+    flatDir {
+        dirs 'libs'
+    }
+}
+
+dependencies {
+
+    def libs = [
+        'net.kyori:adventure-api:4.13.0',
+        'net.kyori:event-api:3.0.0',
+        'net.kyori:adventure-text-serializer-gson:4.13.0',
+        'net.kyori:adventure-text-serializer-plain:4.13.0',
+        'net.kyori:adventure-text-serializer-legacy:4.13.0',
+        'com.rabbitmq:amqp-client:5.17.0',
+        'redis.clients:jedis:4.4.0-m2',
+        'net.bytebuddy:byte-buddy:1.14.4',
+        'io.nats:jnats:2.16.9',
+        'com.zaxxer:HikariCP:4.0.3',
+        'org.jetbrains:annotations:24.0.1',
+        'org.checkerframework:checker-qual:3.33.0',
+        'org.mongodb:mongo-java-driver:3.12.13',
+        'ninja.leaping.configurate:configurate-yaml:3.7.1',
+        'ninja.leaping.configurate:configurate-gson:3.7.1',
+        'ninja.leaping.configurate:configurate-hocon:3.7.1',
+        'com.github.ben-manes.caffeine:caffeine:2.9.3',
+        'com.squareup.okhttp3:okhttp:4.10.0'
+    ]
+
+    for(lib in libs){
+        implementation lib
+        shadow lib
+    }
+
+    implementation fg.deobf('com.sleepwalker:brightfuture-1.16.5:1.19.2.1')
+
+    minecraft 'net.minecraftforge:forge:1.16.5-36.2.34'
+
+    annotationProcessor 'org.spongepowered:mixin:0.8.3:processor'
+}
+
+jar {
+    manifest {
+        attributes([
+            "Specification-Title": "luckperms",
+            "Specification-Vendor": "Luckperms",
+            "Specification-Version": "1",
+            "Implementation-Title": project.name,
+            "Implementation-Version": "${version}",
+            "Implementation-Vendor" :"Luckperms",
+            "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+}
+
+jar.finalizedBy('reobfJar') 
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifact jar
+        }
+    }
+    repositories {
+        maven {
+            url "file:///${project.projectDir}/mcmodsrepo"
+        }
+    }
+}
